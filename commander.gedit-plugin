@@ -1,0 +1,8 @@
+[Gedit Plugin]
+Loader=python
+Module=commander
+IAge=2
+Name=Commander
+Description=Command line interface for advanced editing
+Authors=Jesse van den Kieboom
+Copyright=None
