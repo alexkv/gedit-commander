@@ -9,7 +9,7 @@ class TransparentWindow(gtk.Window):
 		self.set_app_paintable(True)
 		self.set_skip_pager_hint(True)
 		self.set_skip_taskbar_hint(True)
-		self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_UTILITY)
+		#self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_UTILITY)
 		self.set_events(gtk.gdk.ALL_EVENTS_MASK)
 
 		self.set_rgba()
