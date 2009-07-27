@@ -1,0 +1,7 @@
+gedit commander is a gedit plugin providing a command line interface
+to gedit. The idea is to write pluggable python modules which can be
+invoked from this command line, resulting in a sort of mini plugins.
+
+To 'install', put 'commander' and 'commander.gedit-plugin' in
+~/.gnome2/gedit/plugins and put 'modules' in 
+~/.gnome2/gedit/commander/ (create this directory first).
