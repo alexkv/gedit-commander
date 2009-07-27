@@ -6,6 +6,7 @@ import os
 import tempfile
 import signal
 import commands
+import gio
 
 __commander_module__ = True
 __aliases__ = ['!', '!!']
@@ -82,6 +83,13 @@ def _run_command(view, replace, **kwargs):
 	tmpin = None
 	args = kwargs['_cmd']
 	
+	cwd = None
+	doc = view.get_buffer()
+	
+	if not doc.is_untitled() and doc.is_local():
+		gfile = gio.File(doc.get_uri())
+		cwd = os.path.dirname(gfile.get_path())
+	
 	if '<!' in args:
 		bounds = view.get_buffer().get_selection_bounds()
 		
@@ -96,7 +104,7 @@ def _run_command(view, replace, **kwargs):
 		args = args.replace('<!', '< "' + tmpin.name + '"')
 
 	try:
-		p = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		p = subprocess.Popen(args, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		stdout = p.stdout
 
 	except Exception, e:
