@@ -351,8 +351,14 @@ class Entry(TransparentWindow):
 			return True
 		
 		if len(res) == 1:
-			# Erase until the previous '.'
-			found = text.rfind('.')
+			# Erase until the previous '.' or ' '
+			f1 = text.rfind('.')
+			f2 = text.rfind(' ')
+			
+			if f1 < f2:
+				found = f2
+			else:
+				found = f1
 			
 			if found == -1:
 				self._entry.delete_text(0, pos)
@@ -360,7 +366,11 @@ class Entry(TransparentWindow):
 				self._entry.delete_text(pos - (len(text) - found) + 1, pos)
 			
 			newpos = self._entry.get_position()
-			nm = res[0].name
+			
+			if isinstance(res[0], Commands.Method):
+				nm = res[0].name
+			else:
+				nm = str(res[0])
 			
 			if not isinstance(res[0], Commands.Module) or len(res[0].commands()) == 0:
 				nm = nm + " "
@@ -374,7 +384,15 @@ class Entry(TransparentWindow):
 			if self._info_window:
 				self._info_window.clear()
 			
-			self.info_show("\n".join(map(lambda x: '<b>' + x.name + '</b> (<i>' + x.doc() + '</i>)', res)), True)
+			ret = []
+			
+			for x in res:
+				if isinstance(x, Commands.Method):
+					ret.append('<b>' + x.name + '</b> (<i>' + x.doc() + '</i>)')
+				else:
+					ret.append(str(x))
+
+			self.info_show("\n".join(ret), True)
 
 		return True
 	

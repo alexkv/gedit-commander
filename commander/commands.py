@@ -389,8 +389,13 @@ class Commands:
 				if not parent:
 					parent = cmd
 				
-				if '__autocomplete__' in parent.__dict__:
-					cmds = parent.__dict__['__autocomplete__'](parts[1])
+				mod = parent.mod
+				nm = ['__autocomplete_' + cmd.name.replace('-', '_') + '__', '__autocomplete__']
+				
+				for n in nm:
+					if n in mod.__dict__ and type(mod.__dict__[n]) == types.FunctionType:
+						cmds = mod.__dict__[n](parts[1])
+						break
 		
 		if cmds == None:
 			return []
