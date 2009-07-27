@@ -29,10 +29,21 @@ class Process:
 		self.watch = glib.io_add_watch(stdout, conditions, self.collect_output)
 		self._buffer = ''
 
+	def update(self):
+		parts = self._buffer.split("\n")
+		
+		for p in parts[:-1]:
+			self.entry.info_show(p)
+		
+		self._buffer = parts[-1]
+
 	def collect_output(self, fd, condition):
 		if condition & (glib.IO_IN | glib.IO_PRI):
 			try:
 				self._buffer += fd.read()
+				
+				if not self.replace:
+					self.update()
 			except:
 				self.entry.info_show(self._buffer.strip("\n"))
 				self.stop()
