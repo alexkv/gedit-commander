@@ -111,7 +111,7 @@ def new_command(view, name, **kwargs):
 		raise commands.ExecuteException('Commander module ' + name + ' already exists')
 	
 	f = open(filename, 'w')
-	f.write("from commands import Commands\n\n__commander_module__ = True\n\ndef __default__(view, *args):\n\tpass\n")
+	f.write("import commands\n\n__commander_module__ = True\n\ndef __default__(view, *args, **kwargs):\n\t\"\"\"Some kind of cool new feature: cool &lt;something&gt;\n\nUse this to apply the cool new feature\"\"\"\n\tpass\n")
 	f.close()
 	
 	kwargs['_cmd'] = filename
