@@ -15,8 +15,14 @@ def __default__(view, *args, **kwargs):
 	
 	filename = kwargs['_cmd']
 	
+	doc = view.get_buffer()
+	cwd = os.getcwd()
+	
+	if not doc.is_untitled():
+		cwd = os.path.dirname(doc.get_uri())
+	
 	if not os.path.isabs(filename):
-		filename = os.path.join(os.getcwd(), filename)
+		filename = os.path.join(cwd, filename)
 	
 	matches = glob.glob(filename)
 	files = []
