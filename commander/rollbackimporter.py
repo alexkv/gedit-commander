@@ -11,7 +11,6 @@ class RollbackImporter:
 		__builtins__['__import__'] = self._import
 
 	def cancel(self):
-		print self._new_modules
 		__builtins__['__import__'] = self._original_import
 
 	def _import(self, name, globals=None, locals=None, fromlist=[], level=-1):
