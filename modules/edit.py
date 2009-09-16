@@ -4,22 +4,27 @@ import gio
 import gedit
 import glob
 import sys
-import commands
 import types
 import inspect
+import gio
+
+import commander.commands as commands
+import commands.completion
+import commands.result
 
 __commander_module__ = True
 
-def __default__(view, *args, **kwargs):
+@commands.autocomplete(filename=commands.completion.filename)
+def __default__(filename, view):
 	"""Edit file: edit &lt;filename&gt;"""
-	
-	filename = kwargs['_cmd']
 	
 	doc = view.get_buffer()
 	cwd = os.getcwd()
 	
 	if not doc.is_untitled():
 		cwd = os.path.dirname(doc.get_uri())
+	else:
+		cwd = os.path.expanduser('~/')
 	
 	if not os.path.isabs(filename):
 		filename = os.path.join(cwd, filename)
@@ -37,17 +42,15 @@ def __default__(view, *args, **kwargs):
 		window = view.get_toplevel()
 		gedit.commands.load_uris(window, files)
 		
-	return False
+	return commands.result.HIDE
 
-def file(view, *args, **kwargs):
-	"""Edit file: edit &lt;filename&gt;"""
-	return __default__(view, *args, **kwargs)
+locals()['file'] = __default__
 
 def _mod_has_func(mod, func):
 	return func in mod.__dict__ and type(mod.__dict__[func]) == types.FunctionType
 
 def _mod_has_alias(mod, alias):
-	return '__aliases__' in mod.__dict__ and alias in mod.__dict__['__aliases__']
+	return '__root__' in mod.__dict__ and alias in mod.__dict__['__root__']
 
 def _edit_command(view, mod, func=None):
 	try:
@@ -98,7 +101,7 @@ def command(view, name):
 			if not ret:
 				raise commands.ExecuteException('Could not find command: ' + name)
 			else:
-				return False
+				return commands.result.HIDE
 	
 	raise commands.ExecuteException('Could not find command: ' + name)
 

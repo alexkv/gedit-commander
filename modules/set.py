@@ -1,73 +1,110 @@
-import commands
+import commander.commands as commands
 import types
 import gtksourceview2 as gsv
 
 __commander_module__ = True
 
-def __default__(view, *args, **kwargs):
+def _complete_options(words, idx):
+	ret = []
+	
+	for k in __dict__:
+		if type(__dict__[k]) == types.FunctionType and not k.startswith('_'):
+			ret.append(k.replace('_', '-'))
+
+	k.sort()
+	return commands.completion.words(ret)(words, idx)
+
+def _complete_language(words, idx):
+	manager = gsv.language_manager_get_default()
+	ids = manager.get_language_ids()
+	ids.append('none')
+	ids.sort()
+	
+	return commands.completion.words(ids)(words, idx)
+
+def _complete_use_spaces(words, idx):
+	return commands.completion.words(['yes', 'no'])(words, idx)
+
+def _complete_draw_spaces(words, idx):
+	ret = ['none', 'all', 'tabs', 'newlines', 'nbsp', 'spaces']
+	return commands.completion.words(ret)(words, idx)
+
+def _complete_value(words, idx):
+	# Depends a bit on the option
+	ret, completion = _complete_options(words, idx - 1)
+	
+	if not ret:
+		return None
+	
+	completer = '_complete_' + ret[0].replace('-', '_')
+	
+	if completer in __dict__:
+		return __dict__[completer](words[1:], idx - 1)
+	else:
+		return None
+
+@commands.autocomplete(option=_complete_options, value=_complete_value)
+def __default__(view, option, value):
 	"""Set gedit option: set &lt;option&gt; &lt;value&gt;
 
 Sets a gedit option, such as document language, or indenting"""
-	cmd = kwargs['_cmd'].strip()
-	parts = cmd.split(' ', 1)
 
-	name = parts[0]
-	value = parts[1]
+	option = option.replace('_', '-')
 
-	if name in __dict__ and type(__dict__[name]) == types.FunctionType:
-		kwargs['_cmd'] = value
-		args = ars[1:]
-		return __dict__[name](view, *args, **kwargs)
+	if option in __dict__ and type(__dict__[option]) == types.FunctionType:
+		return __dict__[name](view, value)
 	else:
-		raise commands.ExecuteException('Invalid setting: ' + name)
+		raise commands.ExecuteException('Invalid setting: ' + option)
 
-def language(view, *args, **kwargs):
+@commands.autocomplete(language=_complete_language)
+def language(view, language=None):
 	"""Set document language: set.language &lt;language&gt;
 
 Set the document language to the language with the specified id"""
-	cmd = kwargs['_cmd'].strip()
-
-	if cmd == '' or cmd == 'none':
+	if not language or language == 'none':
 		view.get_buffer().set_language(None)
 		return False
 
 	manager = gsv.language_manager_get_default()
-	lang = manager.get_language(cmd)
+	lang = manager.get_language(language)
 	
 	if lang:
 		view.get_buffer().set_language(lang)
 		return False
 	else:
-		raise commands.ExecuteException('Invalid language: ' + cmd)
+		raise commands.ExecuteException('Invalid language: ' + language)
 
-def tab_width(view, *args, **kwargs):
+def tab_width(view, width):
 	"""Set document tab width: set.tab-width &lt;width&gt;
 
 Set the document tab width"""
-	cmd = kwargs['_cmd'].strip()
-	
+
 	try:
-		cmd = int(cmd)
+		width = int(width)
 	except:
-		raise commands.ExecuteException("Invalid tab width: " + str(cmd))
+		raise commands.ExecuteException("Invalid tab width: " + str(width))
 	
-	if cmd <= 0:
-		raise commands.ExecuteException("Invalid tab width: " + str(cmd))
+	if width <= 0:
+		raise commands.ExecuteException("Invalid tab width: " + str(width))
 	
-	view.set_tab_width(cmd)
+	view.set_tab_width(width)
 	return False
 
-def use_spaces(view, *args, **kwargs):
+tab_size = tab_width
+
+@commands.autocomplete(value=_complete_use_spaces)
+def use_spaces(view, value):
 	"""Use spaces instead of tabs: set.use-spaces &lt;yes/no&gt;
 
 Set to true/yes to use spaces instead of tabs"""
 	
-	setting = kwargs['_cmd'].strip() in ('yes', 'true', '1')
+	setting = value in ('yes', 'true', '1')
 	view.set_insert_spaces_instead_of_tabs(setting)
 	
 	return False
 
-def draw_spaces(view, *args, **kwargs):
+@commands.autocomplete({'*': _complete_draw_spaces})
+def draw_spaces(view, *args):
 	"""Draw spaces: set.draw-spaces &lt;none/all/tabs/newlines/nbsp/spaces&gt;
 
 Set what kind of spaces should be drawn. Multiple options can be defined, e.g.
@@ -90,19 +127,3 @@ for drawing spaces and tabs: <i>set.draw-spaces space tab</i>"""
 		
 	view.set_draw_spaces(flags)
 	return False
-
-def __autocomplete_language__(val):
-	manager = gsv.language_manager_get_default()
-	ids = manager.get_language_ids()
-	ids.append('none')
-	ids.sort()
-	
-	return filter(lambda x: x.startswith(val), ids)
-
-def __autocomplete_use_spaces__(val):
-	vals = ['yes', 'no']
-	return filter(lambda x: x.startswith(val), vals)
-
-def __autocomplete_draw_spaces__(val):
-	vals = ['none', 'all', 'tabs', 'newlines', 'nbsp', 'spaces']
-	return filter(lambda x: x.startswith(val), vals)

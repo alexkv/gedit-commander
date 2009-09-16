@@ -28,11 +28,9 @@ class WindowHelper:
 			return False
 
 		if not self._entry:
-			self._entry = Entry(self._plugin.commands, self._window.get_active_view())
-			self._entry.set_transient_for(self._window)
+			self._entry = Entry(self._window.get_active_view())
 			self._entry.connect('destroy', self.on_entry_destroy)
 
-		self._entry.present()
 		self._entry.grab_focus()
 		return True
 	

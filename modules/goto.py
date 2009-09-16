@@ -1,6 +1,6 @@
 """Goto specific places in the document"""
 import os
-from commands import Commands
+import commander.commands as commands
 
 __commander_module__ = True
 
@@ -21,11 +21,10 @@ def __default__(view, line, column=0):
 		
 		column = int(column) - 1
 	except ValueError:
-		raise Commands.ExecuteException('Please specify a valid line number')
+		raise commands.exceptions.Execute('Please specify a valid line number')
 
 	linnum = max(0, linnum)
 	column = max(0, column)
-	
 
 	citer = buf.get_iter_at_line(linnum)
 	citer.forward_chars(column)

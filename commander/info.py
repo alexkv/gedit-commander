@@ -10,6 +10,8 @@ class Info(TransparentWindow):
 		self._entry = entry
 		self._vbox = gtk.VBox(False, 3)
 		
+		self.set_transient_for(entry.get_toplevel())
+		
 		self._vw = gtk.ScrolledWindow()
 		self._vw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 		self._vw.show()
@@ -28,7 +30,7 @@ class Info(TransparentWindow):
 		self._text.set_editable(False)
 		
 		self._vw.add(self._text)
-		self._vbox.pack_end(self._vw, True, True, 0)
+		self._vbox.pack_end(self._vw, expand=False, fill=False)
 		self._vbox.show()
 		self._button_bar = None
 
@@ -40,10 +42,14 @@ class Info(TransparentWindow):
 		self.set_border_width(8)
 		
 		self._text.connect('realize', self.on_text_realize)
+		
 		self.attach()
+		self.show()
 		
 		self.connect_after('size-allocate', self.on_size_allocate)
-		self.max_lines = 5
+		self._vw.connect_after('size-allocate', self.on_text_size_allocate)
+
+		self.max_lines = 10
 		
 		self._attr_map = {
 			pango.ATTR_STYLE: 'style',
@@ -93,12 +99,18 @@ class Info(TransparentWindow):
 			if not attr.type in self._attr_map:
 				continue
 			
-			tagname = str(attr.type) + ':' + str(attr.value)
+			if attr.type == pango.ATTR_FOREGROUND or attr.type == pango.ATTR_BACKGROUND:
+				value = attr.color
+			else:
+				value = attr.value
+				
+			tagname = str(attr.type) + ':' + str(value)
+
 			tag = table.lookup(tagname)
 			
 			if not tag:
 				tag = buf.create_tag(tagname)
-				tag.set_property(self._attr_map[attr.type], attr.value)
+				tag.set_property(self._attr_map[attr.type], value)
 			
 			ret.append(tag)
 		
@@ -134,19 +146,36 @@ class Info(TransparentWindow):
 			if not piter.next():
 				break
 	
+	def toomany_lines(self):
+		buf = self._text.get_buffer()
+		piter = buf.get_start_iter()
+		num = 0
+		
+		while self._text.forward_display_line(piter):
+			num += 1
+			
+			if num > self.max_lines:
+				return True
+		
+		return False		
+	
 	def contents_changed(self):
 		buf = self._text.get_buffer()
-		citer = buf.get_end_iter()
 		
-		if (citer.get_line() >= self.max_lines) and (self._vw.get_policy()[1] != gtk.POLICY_ALWAYS):
+		if self.toomany_lines() and (self._vw.get_policy()[1] != gtk.POLICY_ALWAYS):
 			self._vw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_ALWAYS)
 			
 			layout = self._text.create_pango_layout('Some text to measure')
 			extents = layout.get_pixel_extents()
 			
 			self._text.set_size_request(-1, extents[1][3] * self.max_lines)
-		elif (citer.get_line() < self.max_lines) and (self._vw.get_policy()[1] == gtk.POLICY_ALWAYS):
+		elif not self.toomany_lines() and (self._vw.get_policy()[1] == gtk.POLICY_ALWAYS):
+			self._vw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 			self._text.set_size_request(-1, -1)
+		
+		if not self.toomany_lines():
+			size = self.get_size()
+			self.resize(size[0], 1)
 
 	def ensure_button_bar(self):
 		if not self._button_bar:
@@ -231,11 +260,12 @@ class Info(TransparentWindow):
 		vwwnd = self._entry._view.get_window(gtk.TEXT_WINDOW_TEXT)
 		origin = vwwnd.get_origin()
 		geom = vwwnd.get_geometry()
-		geom2 = self._entry.window.get_geometry()
 
 		margin = 5
 		
 		self.realize()
+		
+		self.move(origin[0], origin[1] + geom[3] - self.allocation.height)
 		self.resize(geom[2] - margin * 2, self.allocation.height)
 	
 	def on_text_insert_text(self, buf, piter, text, length):
@@ -248,9 +278,8 @@ class Info(TransparentWindow):
 		vwwnd = self._entry._view.get_window(gtk.TEXT_WINDOW_TEXT)
 		origin = vwwnd.get_origin()
 		geom = vwwnd.get_geometry()
-		geom2 = self._entry.window.get_geometry()
 
-		self.move(origin[0] + (geom[2] - self.allocation.width) / 2, origin[1] + geom[3] - self.allocation.height - geom2[3])
+		self.move(origin[0] + (geom[2] - self.allocation.width) / 2, origin[1] + geom[3] - self.allocation.height)
 	
 	def on_expose(self, widget, evnt):
 		ret = TransparentWindow.on_expose(self, widget, evnt)
@@ -295,3 +324,7 @@ class Info(TransparentWindow):
 		
 	def background_color(self):
 		return self._entry.background_color()
+	
+	def on_text_size_allocate(self, widget, alloc):
+		pass
+

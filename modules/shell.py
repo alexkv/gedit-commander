@@ -1,4 +1,3 @@
-from commands import Commands
 import subprocess
 import glib
 import fcntl
@@ -8,26 +7,30 @@ import signal
 import commands
 import gio
 
+import commander.commands as commands
+
 __commander_module__ = True
-__aliases__ = ['!', '!!']
-_running_process = None
+__root__ = ['!', '!!', '!&']
 
 class Process:
-	def __init__(self, view, entry, pipe, replace, tmpin, stdout):
+	def __init__(self, entry, pipe, replace, background, tmpin, stdout, suspend):
 		self.pipe = pipe
 		self.replace = replace
 		self.tmpin = tmpin
-		self.view = view
 		self.entry = entry
-		
-		fcntl.fcntl(stdout, fcntl.F_SETFL, os.O_NONBLOCK)	
-		conditions = glib.IO_IN | glib.IO_PRI | glib.IO_ERR | glib.IO_HUP
+		self.suspend = suspend
 		
 		if replace:
-			self.view.set_editable(False)
+			self.entry.view().set_editable(False)
+
+		if not background:
+			fcntl.fcntl(stdout, fcntl.F_SETFL, os.O_NONBLOCK)	
+			conditions = glib.IO_IN | glib.IO_PRI | glib.IO_ERR | glib.IO_HUP
 		
-		self.watch = glib.io_add_watch(stdout, conditions, self.collect_output)
-		self._buffer = ''
+			self.watch = glib.io_add_watch(stdout, conditions, self.collect_output)
+			self._buffer = ''
+		else:
+			stdout.close()
 
 	def update(self):
 		parts = self._buffer.split("\n")
@@ -51,7 +54,7 @@ class Process:
 
 		if condition & (glib.IO_ERR | glib.IO_HUP):
 			if self.replace:
-				buf = self.view.get_buffer()
+				buf = self.entry.view().get_buffer()
 				buf.begin_user_action()
 				
 				bounds = buf.get_selection_bounds()
@@ -70,86 +73,94 @@ class Process:
 		return True
 
 	def stop(self):
-		global _running_process
+		if not self.suspend:
+			return
 
 		self.pipe.kill()
 		glib.source_remove(self.watch)
 		
 		if self.replace:
-			self.view.set_editable(True)
+			self.entry.view().set_editable(True)
 		
 		if self.tmpin:
 			self.tmpin.close()
 		
-		_running_process = None
-		self.entry.execute_done()
+		sus = self.suspend
+		self.suspend = None
+		sus.resume()
 
-def _run_command(view, replace, **kwargs):
-	global _running_process
-	
-	if _running_process:
-		_running_process.stop()
-		_running_process = None
-
+def _run_command(entry, replace, background, argstr):
 	tmpin = None
-	args = kwargs['_cmd']
 	
 	cwd = None
-	doc = view.get_buffer()
+	doc = entry.view().get_buffer()
 	
 	if not doc.is_untitled() and doc.is_local():
 		gfile = gio.File(doc.get_uri())
 		cwd = os.path.dirname(gfile.get_path())
 	
-	if '<!' in args:
-		bounds = view.get_buffer().get_selection_bounds()
+	if '<!' in argstr:
+		bounds = entry.view().get_buffer().get_selection_bounds()
 		
 		if not bounds:
-			bounds = view.get_buffer().get_bounds()
+			bounds = entry.view().get_buffer().get_bounds()
 
 		inp = bounds[0].get_text(bounds[1])
 		
+		# Write to temporary file
 		tmpin = tempfile.NamedTemporaryFile(delete=False)
 		tmpin.write(inp)
 		tmpin.flush()
-		args = args.replace('<!', '< "' + tmpin.name + '"')
+
+		# Replace with temporary file
+		argstr = argstr.replace('<!', '< "' + tmpin.name + '"')
 
 	try:
-		p = subprocess.Popen(args, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		p = subprocess.Popen(argstr, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		stdout = p.stdout
 
 	except Exception, e:
 		raise commands.ExecuteException('Failed to execute: ' + e)
 	
-	_running_process = Process(view, kwargs['_entry'], p, replace, tmpin, stdout)
-	return Commands.EXECUTE_WAIT
+	suspend = None
+	
+	if not background:
+		suspend = commands.result.Suspend()
+	
+	proc = Process(entry, p, replace, background, tmpin, stdout, suspend)
 
-def __default__(view, *args, **kwargs):
+	if not background:
+		yield suspend
+	
+		# Cancelled or simply done
+		proc.stop()
+
+		yield commands.result.DONE
+	else:
+		yield commands.result.HIDE
+
+def __default__(entry, argstr):
 	"""Run shell command: ! &lt;command&gt;
 
 You can use <b>&lt;!</b> as a special input meaning the current selection or current
-document.
-"""
-	return _run_command(view, False, **kwargs)
+document."""
+	return _run_command(entry, False, False, argstr)
 
-def _run_replace(view, *args, **kwargs):
+def _run_replace(entry, argstr):
 	"""Run shell command and place output in document: !! &lt;command&gt;
 
 You can use <b>&lt;!</b> as a special input meaning the current selection or current
-document.
-"""
-	return _run_command(view, True, **kwargs)
+document."""
+	return _run_command(entry, True, False, argstr)
 
-def __cancel__(view, command):
-	global _running_process
+def _run_background(entry, argstr):
+	"""Run shell command in the background: !&amp; &lt;command&gt;
 
-	if _running_process:
-		_running_process.stop()
-		_running_process = None
+You can use <b>&lt;!</b> as a special input meaning the current selection or current
+document."""
+	return _run_command(entry, False, True, argstr)
 
-		return True
-	
-	return False
-
+locals()['!'] = __default__
 locals()['!!'] = _run_replace
+locals()['!&'] = _run_background
 
