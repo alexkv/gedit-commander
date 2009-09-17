@@ -75,19 +75,23 @@ def _edit_command(view, mod, func=None):
 def _resume_command(view, mod, parts):
 	if not parts:
 		return _edit_command(view, mod)
-	elif len(parts) == 1 and _mod_has_func(mod, parts[0]):
-		return _edit_command(view, mod, mod.__dict__[parts[0]])
+	
+	func = parts[0].replace('-', '_')
+
+	if len(parts) == 1 and _mod_has_func(mod, func):
+		return _edit_command(view, mod, mod.__dict__[func])
 	elif len(parts) == 1 and _mod_has_alias(mod, parts[0]):
 		return _edit_command(view, mod)
 	
-	if not parts[0]	in mod.__dict__:
+	if not func in mod.__dict__:
 		return False
 	
-	if not commands.is_commander_module(mod.__dict__[parts[0]]):
+	if not commands.is_commander_module(mod.__dict__[func]):
 		return False
 	
-	return _resume_command(view, mod.__dict__[parts[0]], parts[1:])
-		
+	return _resume_command(view, mod.__dict__[func], parts[1:])
+
+@commands.autocomplete(name=commander.commands.completion.command)
 def command(view, name):
 	"""Edit commander command: edit.command &lt;command&gt;"""
 	parts = name.split('.')
