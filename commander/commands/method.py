@@ -1,4 +1,4 @@
-import commander.commands
+import exceptions
 import types
 import inspect
 
@@ -70,7 +70,7 @@ class Method:
 				del kwargs[k]
 			elif idx >= len(words):
 				if numdef < len(oargs):
-					raise commander.commands.exceptions.Execute('Invalid number of arguments (need %s)' % (oargs[0],))
+					raise exceptions.Execute('Invalid number of arguments (need %s)' % (oargs[0],))
 			else:
 				args.append(words[idx])
 				oargs.remove(k)

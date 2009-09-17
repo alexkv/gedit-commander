@@ -1,5 +1,5 @@
 import sys
-import commands
+import utils
 
 class RollbackImporter:
 	def __init__(self):
@@ -18,7 +18,7 @@ class RollbackImporter:
 
 		mod = apply(self._original_import, (name, globals, locals, fromlist, level))
 		
-		if maybe and commands.is_commander_module(mod):
+		if maybe and utils.is_commander_module(mod):
 			self._new_modules.append(name)
 		
 		return mod

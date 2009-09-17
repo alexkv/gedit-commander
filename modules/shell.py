@@ -4,7 +4,6 @@ import fcntl
 import os
 import tempfile
 import signal
-import commands
 import gio
 
 import commander.commands as commands

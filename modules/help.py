@@ -2,9 +2,8 @@ import sys
 import os
 import types
 
-import commander
 import commander.commands as commands
-import commands.completion
+import commander.commands.completion
 
 from xml.sax import saxutils
 
@@ -40,12 +39,12 @@ def _doc_text(command, func):
 
 	return doc
 
-@commands.autocomplete(command=commands.completion.command)
+@commands.autocomplete(command=commander.commands.completion.command)
 def __default__(entry, command='help'):
 	"""Show help on commands: help &lt;command&gt;
 
 Show detailed information on how to use a certain command (if available)"""
-	res = commands.completion.command([command], 0)
+	res = commander.commands.completion.command([command], 0)
 	
 	if not res:
 		raise commander.commands.exceptions.Execute('Could not find command: ' + command)

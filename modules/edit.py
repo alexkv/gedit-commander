@@ -9,12 +9,13 @@ import inspect
 import gio
 
 import commander.commands as commands
-import commands.completion
-import commands.result
+import commander.commands.completion
+import commander.commands.result
+import commander.commands.exceptions
 
 __commander_module__ = True
 
-@commands.autocomplete(filename=commands.completion.filename)
+@commands.autocomplete(filename=commander.commands.completion.filename)
 def __default__(filename, view):
 	"""Edit file: edit &lt;filename&gt;"""
 	
@@ -42,7 +43,7 @@ def __default__(filename, view):
 		window = view.get_toplevel()
 		gedit.commands.load_uris(window, files)
 		
-	return commands.result.HIDE
+	return commander.commands.result.HIDE
 
 locals()['file'] = __default__
 
@@ -99,11 +100,11 @@ def command(view, name):
 				ret = _resume_command(view, sys.modules[mod], parts)
 			
 			if not ret:
-				raise commands.ExecuteException('Could not find command: ' + name)
+				raise commander.commands.exceptions.Execute('Could not find command: ' + name)
 			else:
-				return commands.result.HIDE
+				return commander.commands.result.HIDE
 	
-	raise commands.ExecuteException('Could not find command: ' + name)
+	raise commander.commands.exceptions.Execute('Could not find command: ' + name)
 
 def new_command(view, name, **kwargs):
 	"""Create a new commander command module: edit.new-command &lt;command&gt;"""
@@ -111,7 +112,7 @@ def new_command(view, name, **kwargs):
 	filename = os.path.expanduser('~/.gnome2/gedit/commander/modules/' + name + '.py')
 	
 	if os.path.isfile(filename):
-		raise commands.ExecuteException('Commander module ' + name + ' already exists')
+		raise commander.commands.exceptions.Execute('Commander module ' + name + ' already exists')
 	
 	f = open(filename, 'w')
 	f.write("import commands\n\n__commander_module__ = True\n\ndef __default__(view, *args, **kwargs):\n\t\"\"\"Some kind of cool new feature: cool &lt;something&gt;\n\nUse this to apply the cool new feature\"\"\"\n\tpass\n")

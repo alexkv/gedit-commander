@@ -3,11 +3,10 @@ import os
 import types
 import bisect
 
-import commands
-import commands.exceptions
-
-from commands import method
-from commands import rollbackimporter
+import utils
+import exceptions
+import method
+import rollbackimporter
 
 class Module(method.Method):
 	def __init__(self, base, mod, parent=None):
@@ -76,7 +75,7 @@ class Module(method.Method):
 			
 			if type(item) == types.FunctionType:
 				bisect.insort(self._commands, method.Method(item, k, self))
-			elif type(item) == types.ModuleType and commands.is_commander_module(item):
+			elif type(item) == types.ModuleType and utils.is_commander_module(item):
 				mod = Module(k, item, self)
 				bisect.insort(self._commands, mod)
 				
@@ -111,7 +110,7 @@ class Module(method.Method):
 			self.mod = __import__(self.name, globals(), locals(), [], 0)
 			self._rollback.cancel()
 			
-			if not commands.is_commander_module(self.mod):
+			if not utils.is_commander_module(self.mod):
 				raise Exception('Module is not a commander module...')
 			
 			if '__default__' in self.mod.__dict__:
