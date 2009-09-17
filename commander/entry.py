@@ -508,7 +508,7 @@ class Entry(gtk.EventBox):
 
 			for x in res:
 				if isinstance(x, commands.method.Method):
-					ret.append('<b>' + x.name + '</b> (<i>' + x.online_doc() + '</i>)')
+					ret.append('<b>' + x.name + '</b> (<i>' + x.oneline_doc() + '</i>)')
 				else:
 					ret.append(str(x))
 
