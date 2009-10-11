@@ -91,4 +91,4 @@ def title(view):
 	"""Make title case: format.title
 
 Transform text in selection to title case."""
-	return _transform(view, lambda x: x.title())
+	return _transform(view, lambda x: x.title()).replace('_', '')
