@@ -35,9 +35,12 @@ spaces are removed from the whole document."""
 			while end.get_char().isspace() and end.compare(start) > 0:
 				end.backward_char()
 
-			if not end.equal(start) and not end.ends_line():
-				end.forward_char()
-				buf.delete(end, last)
+			if not end.ends_line():
+				if not end.get_char().isspace():
+					end.forward_char()
+
+				if last.get_offset() - end.get_offset() > 1 or end.get_char() != ' ':
+					buf.delete(end, last)
 
 			start = end.copy()
 			start.forward_line()
