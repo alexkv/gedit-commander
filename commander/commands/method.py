@@ -53,7 +53,7 @@ class Method:
 	def execute(self, argstr, words, entry, modifier):
 		fp = self.func_props()
 		
-		kwargs = {'argstr': argstr, 'args': words, 'entry': entry, 'view': entry.view(), 'modifier': modifier}
+		kwargs = {'argstr': argstr, 'args': words, 'entry': entry, 'view': entry.view(), 'modifier': modifier, 'window': entry.view().get_toplevel()}
 		oargs = list(fp.args)
 		args = []
 		idx = 0
