@@ -3,7 +3,7 @@ import commander.commands as commands
 
 class Finder:
 	FIND_STARTMARK = 'gedit-commander-find-startmark'
-	FIND_ENDMARK = 'gedit-commander-find-startmark'
+	FIND_ENDMARK = 'gedit-commander-find-endmark'
 	
 	def __init__(self, entry):
 		self.entry = entry
@@ -43,6 +43,7 @@ class Finder:
 	
 	def find_next(self):
 		buf = self.view.get_buffer()
+		
 		bounds = [buf.get_iter_at_mark(buf.get_selection_bound()),
 			      buf.get_iter_at_mark(self.marks[1])]
 
@@ -97,21 +98,29 @@ class Finder:
 			self.marks[0] = None
 			self.last_insert_mark = buf.create_mark(None, buf.get_iter_at_mark(buf.get_insert()), True)
 		else:
+			bounds[0].order(bounds[1])
+			
 			self.marks[0] = buf.get_mark(Finder.FIND_STARTMARK)
 		
 			if not self.marks[0]:
 				self.marks[0] = buf.create_mark(Finder.FIND_STARTMARK, bounds[0], True)
 			else:
 				buf.move_mark(self.marks[0], bounds[0])
-
+		
 		self.marks[1] = buf.get_mark(Finder.FIND_ENDMARK)
 	
 		if not self.marks[1]:
 			self.marks[1] = buf.create_mark(Finder.FIND_ENDMARK, bounds[1], False)
 		else:
 			buf.move_mark(self.marks[1], bounds[1])
-		
-		buf.move_mark(buf.get_selection_bound(), buf.get_iter_at_mark(buf.get_insert()))
+
+		if self.marks[0]:
+			start = buf.get_iter_at_mark(self.marks[0])
+
+			buf.move_mark(buf.get_selection_bound(), start)
+			buf.move_mark(buf.get_insert(), start)
+		else:
+			buf.move_mark(buf.get_selection_bound(), buf.get_iter_at_mark(buf.get_insert()))
 
 		if not self.find_next():
 			if doend:
@@ -155,6 +164,15 @@ class Finder:
 		self.cancel()
 		yield commands.result.DONE
 	
+	def _restore_cursor(self, mark):
+		buf = mark.get_buffer()
+
+		buf.move_mark(buf.get_insert(), buf.get_iter_at_mark(mark))
+		buf.move_mark(buf.get_selection_bound(), buf.get_iter_at_mark(mark))
+		buf.delete_mark(mark)
+		
+		self.view.scroll_to_mark(buf.get_insert(), 0.2, True, 0, 0.5)
+	
 	def replace(self, findstr, replaceall=False, replacestr=None):
 		if findstr:
 			self.set_find(findstr)
@@ -164,6 +182,10 @@ class Finder:
 
 		# First find something
 		buf = self.view.get_buffer()
+		
+		if replaceall:
+			startmark = buf.create_mark(None, buf.get_iter_at_mark(buf.get_insert()), False)
+		
 		ret = (yield self.find_first())
 		
 		if not ret:
@@ -175,6 +197,9 @@ class Finder:
 				replacestr, words, modifier = (yield commands.result.Prompt('Replace with:'))
 				self.set_replace(replacestr)
 			except GeneratorExit as e:
+				if replaceall:
+					self._restore_cursor(startmark)
+
 				self.cancel()
 				raise e
 
@@ -213,12 +238,15 @@ class Finder:
 	
 		except GeneratorExit as e:
 			if replaceall:
+				self._restore_cursor(startmark)
 				buf.end_user_action()
 
 			self.cancel()
 			raise e				
 
 		if replaceall:
+			self._restore_cursor(startmark)
+
 			buf.end_user_action()
 
 		self.cancel()
