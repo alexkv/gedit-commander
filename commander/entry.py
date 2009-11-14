@@ -347,6 +347,8 @@ class Entry(gtk.EventBox):
 				self._command_state.clear()
 				self._view.grab_focus()
 				self.destroy()
+			else:
+				self._entry.grab_focus()
 
 		return True
 	
