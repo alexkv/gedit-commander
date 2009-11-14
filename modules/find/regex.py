@@ -12,7 +12,7 @@ class RegexFinder(finder.Finder):
 		finder.Finder.__init__(self, entry)
 		
 		self.flags = re.UNICODE | re.MULTILINE | re.DOTALL | flags
-		self.groupre = re.compile('(\\\\)?\\$([0-9]+)')
+		self.groupre = re.compile('(\\\\)?\\$([0-9]+|{(([0-9]+):([^}]+))})')
 	
 	def set_find(self, findstr):
 		finder.Finder.set_find(self, findstr)
@@ -39,13 +39,34 @@ class RegexFinder(finder.Finder):
 		else:
 			return False
 	
+	def _transform(self, text, trans):
+		if not trans:
+			return text
+		
+		transforms = {
+			'u': lambda x: "%s%s" % (x[0].upper(), x[1:]),
+			'U': lambda x: x.upper(),
+			'l': lambda x: "%s%s" % (x[0].lower(), x[1:]),
+			'L': lambda x: x.lower(),
+			't': lambda x: x.title()
+		}
+		
+		for i in trans.split(','):
+			if i in transforms:
+				text = transforms[i](text)
+		
+		return text
+	
 	def _do_re_replace_group(self, matchit, group):
-		num = int(group.group(2))
+		if group.group(3):
+			num = int(group.group(4))
+		else:
+			num = int(group.group(2))
 		
 		if group.group(1):
 			return group.group(2)
 		elif num < len(matchit.groups()) + 1:
-			return matchit.group(num)
+			return self._transform(matchit.group(num), group.group(5))
 		else:
 			return group.group(0)
 	
