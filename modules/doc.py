@@ -28,7 +28,7 @@ class Function:
 		
 		self.valid = True
 		
-		self.return_type = m.group(1) and m.group(1) != 'void' and m.group(1).strip()
+		self.return_type = m.group(1) and m.group(1).strip() != 'void' and m.group(1).strip()
 		self.return_type_name = self.return_type and m.group(2).strip()
 		
 		parts = m.group(3).split('::')
