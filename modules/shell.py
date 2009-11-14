@@ -7,6 +7,8 @@ import signal
 import gio
 
 import commander.commands as commands
+import commander.commands.exceptions
+import commander.commands.result
 
 __commander_module__ = True
 __root__ = ['!', '!!', '!&']
@@ -119,12 +121,12 @@ def _run_command(entry, replace, background, argstr):
 		stdout = p.stdout
 
 	except Exception, e:
-		raise commands.ExecuteException('Failed to execute: ' + e)
+		raise commander.commands.exceptions.Execute('Failed to execute: ' + e)
 	
 	suspend = None
 	
 	if not background:
-		suspend = commands.result.Suspend()
+		suspend = commander.commands.result.Suspend()
 	
 	proc = Process(entry, p, replace, background, tmpin, stdout, suspend)
 
@@ -134,9 +136,9 @@ def _run_command(entry, replace, background, argstr):
 		# Cancelled or simply done
 		proc.stop()
 
-		yield commands.result.DONE
+		yield commander.commands.result.DONE
 	else:
-		yield commands.result.HIDE
+		yield commander.commands.result.HIDE
 
 def __default__(entry, argstr):
 	"""Run shell command: ! &lt;command&gt;
