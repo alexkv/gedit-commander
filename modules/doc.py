@@ -182,12 +182,17 @@ for it to work."""
 	doc, func = _make_documenter(window, view)
 
 	# Generate docstring for this function
-	doc.append("/** \\brief ").append_placeholder("Short description").append(".\n")
+	doc.append("/** \\brief ").append_placeholder("Short description")
+	
+	if func.const:
+		doc.append(" (const)")
+	
+	doc.append(".\n")
 
 	for arg in func.args:
 		doc.append(" * @param ", arg.name, " ").append_placeholder("Description").append("\n")
 	
-	doc.append(" * \n * ")
+	doc.append(" *\n * ")
 	
 	if func.constructor:
 		doc.append("Constructor.\n *\n * ")
@@ -200,7 +205,7 @@ for it to work."""
 		doc.append(" *\n * @return: ")
 		
 		if func.return_type == 'bool':
-			doc.append("true if ").append_placeholder("Description").append(" or false otherwise")
+			doc.append("true if ").append_placeholder("Description").append(", false otherwise")
 		else:
 			doc.append_placeholder("Description")
 		
