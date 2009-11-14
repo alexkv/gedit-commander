@@ -60,11 +60,11 @@ class Process:
 				
 				bounds = buf.get_selection_bounds()
 				
-				if not bounds:
-					bounds = buf.get_bounds()
-					
-				buf.delete(bounds[0], bounds[1])
+				if bounds:
+					buf.delete(bounds[0], bounds[1])
+
 				buf.insert_at_cursor(self._buffer)
+				buf.end_user_action()
 			else:
 				self.entry.info_show(self._buffer.strip("\n"))
 			
