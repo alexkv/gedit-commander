@@ -1,4 +1,6 @@
 import commander.commands as commands
+import commander.commands.exceptions
+
 import types
 import gtksourceview2 as gsv
 
@@ -56,9 +58,9 @@ Sets a gedit option, such as document language, or indenting"""
 	gb = globals()
 
 	if option in gb and type(gb[option]) == types.FunctionType:
-		return gb[name](view, value)
+		return gb[option](view, value)
 	else:
-		raise commands.ExecuteException('Invalid setting: ' + option)
+		raise commander.commands.exceptions.Execute('Invalid setting: ' + option)
 
 @commands.autocomplete(language=_complete_language)
 def language(view, language=None):
@@ -76,7 +78,7 @@ Set the document language to the language with the specified id"""
 		view.get_buffer().set_language(lang)
 		return False
 	else:
-		raise commands.ExecuteException('Invalid language: ' + language)
+		raise commander.commands.exceptions.Execute('Invalid language: ' + language)
 
 def tab_width(view, width):
 	"""Set document tab width: set.tab-width &lt;width&gt;
@@ -86,10 +88,10 @@ Set the document tab width"""
 	try:
 		width = int(width)
 	except:
-		raise commands.ExecuteException("Invalid tab width: " + str(width))
+		raise commander.commands.exceptions.Execute("Invalid tab width: " + str(width))
 	
 	if width <= 0:
-		raise commands.ExecuteException("Invalid tab width: " + str(width))
+		raise commander.commands.exceptions.Execute("Invalid tab width: " + str(width))
 	
 	view.set_tab_width(width)
 	return False
