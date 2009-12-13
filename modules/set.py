@@ -7,11 +7,13 @@ __commander_module__ = True
 def _complete_options(words, idx):
 	ret = []
 	
-	for k in __dict__:
-		if type(__dict__[k]) == types.FunctionType and not k.startswith('_'):
+	gb = globals()
+
+	for k in gb:
+		if type(gb[k]) == types.FunctionType and not k.startswith('_'):
 			ret.append(k.replace('_', '-'))
 
-	k.sort()
+	ret.sort()
 	return commands.completion.words(ret)(words, idx)
 
 def _complete_language(words, idx):
@@ -37,9 +39,10 @@ def _complete_value(words, idx):
 		return None
 	
 	completer = '_complete_' + ret[0].replace('-', '_')
-	
-	if completer in __dict__:
-		return __dict__[completer](words[1:], idx - 1)
+	gb = globals()
+
+	if completer in gb:
+		return gb[completer](words[1:], idx - 1)
 	else:
 		return None
 
@@ -50,9 +53,10 @@ def __default__(view, option, value):
 Sets a gedit option, such as document language, or indenting"""
 
 	option = option.replace('_', '-')
+	gb = globals()
 
-	if option in __dict__ and type(__dict__[option]) == types.FunctionType:
-		return __dict__[name](view, value)
+	if option in gb and type(gb[option]) == types.FunctionType:
+		return gb[name](view, value)
 	else:
 		raise commands.ExecuteException('Invalid setting: ' + option)
 
