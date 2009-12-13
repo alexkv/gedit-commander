@@ -316,7 +316,7 @@ class Entry(gtk.EventBox):
 
 		try:
 			ret = commands.Commands().execute(self._command_state, text, words, wordsstr, self, modifier)
-		except Exception as e:
+		except Exception, e:
 			self.command_history_done()
 			self._command_state.clear()
 			
@@ -453,7 +453,7 @@ class Entry(gtk.EventBox):
 							del kwargs[k]
 				
 				ret = func(**kwargs)
-			except Exception as e:
+			except Exception, e:
 				# Can be number of arguments, or return values or simply buggy
 				# modules
 				print e

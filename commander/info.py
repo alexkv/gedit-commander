@@ -128,7 +128,7 @@ class Info(TransparentWindow):
 			
 		try:
 			ret = pango.parse_markup(line)
-		except Exception as e:
+		except Exception, e:
 			print 'Could not parse markup:', e
 			buf.insert(buf.get_end_iter(), line)
 			return

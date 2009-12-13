@@ -45,7 +45,7 @@ spaces are removed from the whole document."""
 			start = end.copy()
 			start.forward_line()
 			
-	except Exception as e:
+	except Exception, e:
 		print e
 	
 	buf.delete_mark(until)

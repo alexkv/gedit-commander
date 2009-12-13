@@ -43,12 +43,12 @@ def regex(view, modifier, regex, num=1):
 Move the cursor per regex (use negative num to move backwards)"""
 	try:
 		r = re.compile(regex, re.DOTALL | re.MULTILINE | re.UNICODE)
-	except Exception as e:
+	except Exception, e:
 		raise commands.exceptions.Execute('Invalid regular expression: ' + str(e))
 	
 	try:
 		num = int(num)
-	except Exception as e:
+	except Exception, e:
 		raise commands.exceptions.Execute('Invalid number: ' + str(e))
 	
 	buf = view.get_buffer()

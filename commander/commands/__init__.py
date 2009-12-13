@@ -214,7 +214,7 @@ class Commands(Singleton):
 
 			if state:
 				return self.run(state)
-		except Exception as e:
+		except Exception, e:
 			# Something error like, we throw on the parent generator
 			state.pop()
 			
@@ -321,7 +321,7 @@ class Commands(Singleton):
 		# Now, try to reload the module
 		try:
 			mod.reload()
-		except Exception as e:
+		except Exception, e:
 			# Reload failed, we remove the module
 			print 'Failed to reload module:', e
 
