@@ -133,8 +133,15 @@ class Commands(Singleton):
 	
 	def add_monitor(self, d):
 		gfile = gio.File(d)
-		monitor = gfile.monitor_directory(gio.FILE_MONITOR_NONE, None)
+		monitor = None
 		
+		try:
+			monitor = gfile.monitor_directory(gio.FILE_MONITOR_NONE, None)
+		except gio.Error, e:
+			# Could not create monitor, this happens on systems where file monitoring is
+			# not supported, but we don't really care
+			pass
+
 		if monitor:
 			monitor.connect('changed', self.on_monitor_changed)
 			self._monitors.append(monitor)
