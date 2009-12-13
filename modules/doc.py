@@ -130,8 +130,9 @@ cursor. The cursor needs to be on the first line of the function declaration
 for it to work."""
 	
 	buf = view.get_buffer()
-	
-	if not buf.get_language().get_id() in ('c', 'chdr', 'cpp'):
+	lang = buf.get_language()
+
+	if not lang or not lang.get_id() in ('c', 'chdr', 'cpp'):
 		raise commander.commands.exceptions.Execute('Don\'t know about this language')
 
 	doc, func = _make_documenter(window, view)
