@@ -28,16 +28,7 @@ class Method:
 	def func_props(self):
 		if not self._func_props:
 			# Introspect the function arguments
-			self._func_props = inspect.getargspec(self.method)
-
-			# Before 2.6 this was just a normal tuple, we don't want that
-			if sys.version_info < (2, 6):
-				self._func_props = utils.Struct({
-					'args': self._func_props[0],
-					'varargs': self._func_props[1],
-					'keywords': self._func_props[2],
-					'defaults': self._func_props[3]
-				})
+			self._func_props = utils.getargspec(self.method)
 		
 		return self._func_props
 	

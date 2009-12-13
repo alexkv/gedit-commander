@@ -1,5 +1,7 @@
 import os
 import types
+import inspect
+import sys
 
 class Struct(dict):
 	def __getattr__(self, name):
@@ -25,3 +27,17 @@ def is_commander_module(mod):
 	else:
 		mod = str(mod)
 		return mod.endswith('.py') or (os.path.isdir(mod) and os.path.isfile(os.path.join(mod, '__init__.py')))
+
+def getargspec(func):
+	ret = inspect.getargspec(func)
+
+	# Before 2.6 this was just a normal tuple, we don't want that
+	if sys.version_info < (2, 6):
+		ret = Struct({
+			'args': ret[0],
+			'varargs': ret[1],
+			'keywords': ret[2],
+			'defaults': ret[3]
+		})
+		
+	return ret

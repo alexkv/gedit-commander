@@ -12,6 +12,8 @@ import commands.module
 import commands.method
 import commands.exceptions
 
+import commander.utils as utils
+
 from history import History
 from info import Info
 from xml.sax import saxutils
@@ -440,7 +442,8 @@ class Entry(gtk.EventBox):
 			func = complete[arg]
 
 			try:
-				spec = inspect.getargspec(func)
+				spec = utils.getargspec(func)
+				
 				kwargs = {
 					'words': wordsstr[1:],
 					'idx': posidx - 1,
