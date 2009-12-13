@@ -1,9 +1,13 @@
 from xml.sax import saxutils
 import commander.commands as commands
+import commander.utils as utils
 
 class Finder:
 	FIND_STARTMARK = 'gedit-commander-find-startmark'
 	FIND_ENDMARK = 'gedit-commander-find-endmark'
+	
+	FIND_RESULT_STARTMARK = 'gedit-commander-find-result-startmark'
+	FIND_RESULT_ENDMARK = 'gedit-commander-find-result-endmark'
 	
 	def __init__(self, entry):
 		self.entry = entry
@@ -12,7 +16,8 @@ class Finder:
 		self.findstr = None
 		self.replacestr = None
 
-		self.marks = [None, None]
+		self.search_boundaries = utils.Struct({'start': None, 'end': None})
+		self.find_result = utils.Struct({'start': None, 'end': None})
 		
 		self.unescapes = [
 			['\\n', '\n'],
@@ -21,7 +26,7 @@ class Finder:
 		]
 		
 		self.from_start = False
-		self.last_insert_mark = None
+		self.search_start_mark = None
 	
 	def unescape(self, s):
 		for esc in self.unescapes:
@@ -41,42 +46,70 @@ class Finder:
 	def set_find(self, findstr):
 		self.findstr = self.unescape(findstr)
 	
-	def find_next(self):
+	def select_last_result(self):
 		buf = self.view.get_buffer()
 		
-		bounds = [buf.get_iter_at_mark(buf.get_selection_bound()),
-			      buf.get_iter_at_mark(self.marks[1])]
+		startiter = buf.get_iter_at_mark(self.find_result.start)
+		enditer = buf.get_iter_at_mark(self.find_result.end)
+		
+		buf.select_range(startiter, enditer)
+
+		visible = self.view.get_visible_rect()
+		loc = self.view.get_iter_location(startiter)
+
+		# Scroll there if needed
+		if loc.y + loc.height < visible.y or loc.y > visible.y + visible.height:
+			self.view.scroll_to_iter(startiter, 0.2, True, 0, 0.5)
+	
+	def find_next(self, select=False):
+		buf = self.view.get_buffer()
+		
+		# Search from the end of the last result to the end of the search boundary
+		bounds = [buf.get_iter_at_mark(self.find_result.end),
+			      buf.get_iter_at_mark(self.search_boundaries.end)]
 
 		ret = self.do_find(bounds)
+		
+		# Check if we need to wrap around if nothing is found
+		startiter = buf.get_iter_at_mark(self.search_start_mark)
+		startbound = buf.get_iter_at_mark(self.search_boundaries.start)
 	
-		if not ret and not self.marks[0] and not self.from_start:
+		if not ret and not self.from_start and not startiter.equal(startbound):
 			self.from_start = True
 
 			# Try from beginning
 			bounds[0] = buf.get_start_iter()
-			bounds[1] = buf.get_iter_at_mark(self.last_insert_mark)
+			bounds[1] = buf.get_iter_at_mark(self.search_start_mark)
 			
-			self.marks[1] = self.last_insert_mark
+			# Make sure to just stop at the start of the previous
+			self.search_boundaries.end = self.search_start_mark
 			
 			ret = self.do_find(bounds)
 	
 		if not ret:
 			return False
 		else:
-			# Goto
-			buf.move_mark(buf.get_insert(), ret[0])
-			buf.move_mark(buf.get_selection_bound(), ret[1])
-
-			visible = self.view.get_visible_rect()
-			loc = self.view.get_iter_location(ret[0])
-
-			# Scroll there if needed
-			if loc.y + loc.height < visible.y or loc.y > visible.y + visible.height:
-				self.view.scroll_to_mark(buf.get_insert(), 0.2, True, 0, 0.5)
-
+			# Mark find result
+			buf.move_mark(self.find_result.start, ret[0])
+			buf.move_mark(self.find_result.end, ret[1])
+			
+			if select:
+				self.select_last_result()
+			
 			return True
 
-	def find_first(self, doend=True):
+	def _create_or_move(self, markname, piter, left_gravity):
+		buf = self.view.get_buffer()
+		mark = buf.get_mark(markname)
+		
+		if not mark:
+			mark = buf.create_mark(markname, piter, left_gravity)
+		else:
+			buf.move_mark(mark, piter)
+		
+		return mark
+
+	def find_first(self, doend=True, select=False):
 		words = []
 		buf = self.view.get_buffer()
 	
@@ -89,40 +122,29 @@ class Finder:
 		# Determine search area
 		bounds = list(buf.get_selection_bounds())
 		
-		if self.last_insert_mark:
-			buf.delete_mark(self.last_insert_mark)
-			self.last_insert_mark = None
+		if self.search_start_mark:
+			buf.delete_mark(self.search_start_mark)
+			self.search_start_mark = None
 		
 		if not bounds:
+			# Search in the whole buffer, from the current cursor position on to the
+			# end, and then continue to start from the beginning of the buffer if needed
 			bounds = list(buf.get_bounds())
-			self.marks[0] = None
-			self.last_insert_mark = buf.create_mark(None, buf.get_iter_at_mark(buf.get_insert()), True)
-		else:
-			bounds[0].order(bounds[1])
-			
-			self.marks[0] = buf.get_mark(Finder.FIND_STARTMARK)
+			self.search_start_mark = buf.create_mark(None, buf.get_iter_at_mark(buf.get_insert()), True)
 		
-			if not self.marks[0]:
-				self.marks[0] = buf.create_mark(Finder.FIND_STARTMARK, bounds[0], True)
-			else:
-				buf.move_mark(self.marks[0], bounds[0])
+		bounds[0].order(bounds[1])
+
+		# Set marks at the boundaries
+		self.search_boundaries.start = self._create_or_move(Finder.FIND_STARTMARK, bounds[0], True)
+		self.search_boundaries.end = self._create_or_move(Finder.FIND_ENDMARK, bounds[1], False)
 		
-		self.marks[1] = buf.get_mark(Finder.FIND_ENDMARK)
-	
-		if not self.marks[1]:
-			self.marks[1] = buf.create_mark(Finder.FIND_ENDMARK, bounds[1], False)
-		else:
-			buf.move_mark(self.marks[1], bounds[1])
+		# Set the result marks so the next find will start at the correct location
+		piter = buf.get_iter_at_mark(buf.get_insert())
+		
+		self.find_result.start = self._create_or_move(Finder.FIND_RESULT_STARTMARK, piter, True)
+		self.find_result.end = self._create_or_move(Finder.FIND_RESULT_ENDMARK, piter, False)
 
-		if self.marks[0]:
-			start = buf.get_iter_at_mark(self.marks[0])
-
-			buf.move_mark(buf.get_selection_bound(), start)
-			buf.move_mark(buf.get_insert(), start)
-		else:
-			buf.move_mark(buf.get_selection_bound(), buf.get_iter_at_mark(buf.get_insert()))
-
-		if not self.find_next():
+		if not self.find_next(select=select):
 			if doend:
 				self.entry.info_show('<i>Search hit end of the document</i>', True)
 
@@ -136,8 +158,8 @@ class Finder:
 		buf.set_search_text('', 0)
 		buf.move_mark(buf.get_selection_bound(), buf.get_iter_at_mark(buf.get_insert()))
 		
-		if self.last_insert_mark:
-			buf.delete_mark(self.last_insert_mark)
+		if self.search_start_mark:
+			buf.delete_mark(self.search_start_mark)
 	
 	def find(self, findstr):
 		if findstr:
@@ -146,18 +168,18 @@ class Finder:
 		buf = self.view.get_buffer()
 
 		try:
-			if (yield self.find_first()):
+			if (yield self.find_first(select=True)):
 				while True:
 					argstr, words, modifier = (yield commands.result.Prompt('Search next [<i>%s</i>]:' % (saxutils.escape(self.findstr),)))
 	
 					if argstr:
 						self.set_find(argstr)
 
-					if not self.find_next():
+					if not self.find_next(select=True):
 						break
 
 				self.entry.info_show('<i>Search hit end of the document</i>', True)
-		except GeneratorExit as e:
+		except GeneratorExit, e:
 			self.cancel()
 			raise e
 
@@ -166,9 +188,8 @@ class Finder:
 	
 	def _restore_cursor(self, mark):
 		buf = mark.get_buffer()
-
-		buf.move_mark(buf.get_insert(), buf.get_iter_at_mark(mark))
-		buf.move_mark(buf.get_selection_bound(), buf.get_iter_at_mark(mark))
+		
+		buf.place_cursor(buf.get_iter_at_mark(mark))
 		buf.delete_mark(mark)
 		
 		self.view.scroll_to_mark(buf.get_insert(), 0.2, True, 0, 0.5)
@@ -186,17 +207,17 @@ class Finder:
 		if replaceall:
 			startmark = buf.create_mark(None, buf.get_iter_at_mark(buf.get_insert()), False)
 		
-		ret = (yield self.find_first())
+		ret = (yield self.find_first(select=not replaceall))
 		
 		if not ret:
 			yield commands.result.DONE
-	
+		
 		# Then ask for the replacement string
 		if not self.replacestr:
 			try:
 				replacestr, words, modifier = (yield commands.result.Prompt('Replace with:'))
 				self.set_replace(replacestr)
-			except GeneratorExit as e:
+			except GeneratorExit, e:
 				if replaceall:
 					self._restore_cursor(startmark)
 
@@ -215,28 +236,27 @@ class Finder:
 					if rep:
 						self.set_replace(rep)
 
-				bounds = buf.get_selection_bounds()
+				bounds = utils.Struct({'start': buf.get_iter_at_mark(self.find_result.start),
+				                       'end': buf.get_iter_at_mark(self.find_result.end)})
 
 				# If there is a selection, replace it with the replacement string
-				if bounds:
-					text = bounds[0].get_text(bounds[1])
+				if not bounds.start.equal(bounds.end):
+					text = bounds.start.get_text(bounds.end)
 					repl = self.get_replace(text)
 
 					buf.begin_user_action()
-					buf.delete(bounds[0], bounds[1])
-					buf.insert(bounds[1], repl)
-	
-					buf.move_mark(buf.get_insert(), bounds[1])
+					buf.delete(bounds.start, bounds.end)
+					buf.insert(bounds.start, repl)
 					buf.end_user_action()
 
 				# Find next
-				if not self.find_next():
+				if not self.find_next(select=not replaceall):
 					if not replaceall:
 						self.entry.info_show('<i>Search hit end of the document</i>', True)
 
 					break
 	
-		except GeneratorExit as e:
+		except GeneratorExit, e:
 			if replaceall:
 				self._restore_cursor(startmark)
 				buf.end_user_action()
