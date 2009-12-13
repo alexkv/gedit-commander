@@ -44,10 +44,16 @@ class Process:
 	def collect_output(self, fd, condition):
 		if condition & (glib.IO_IN | glib.IO_PRI):
 			try:
-				self._buffer += fd.read()
+				ret = fd.read()
 				
-				if not self.replace:
-					self.update()
+				# This seems to happen on OS X...
+				if ret == '':
+					condition = condition | glib.IO_HUP
+				else:
+					self._buffer += ret
+				
+					if not self.replace:
+						self.update()
 			except:
 				self.entry.info_show(self._buffer.strip("\n"))
 				self.stop()
@@ -77,7 +83,9 @@ class Process:
 		if not self.suspend:
 			return
 
-		self.pipe.kill()
+		if hasattr(self.pipe, 'kill'):
+			self.pipe.kill()
+
 		glib.source_remove(self.watch)
 		
 		if self.replace:
