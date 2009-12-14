@@ -54,7 +54,7 @@ def __default__(view, option, value):
 
 Sets a gedit option, such as document language, or indenting"""
 
-	option = option.replace('_', '-')
+	option = option.replace('-', '_')
 	gb = globals()
 
 	if option in gb and type(gb[option]) == types.FunctionType:
